@@ -110,6 +110,22 @@ class Points_Projection(object):
 
         img_points, jacobian = cv2.projectPoints(self.cloud_points, rvec, tvec, self.camera_matrix, self.dis_coeffs)
         image = cv2.imread(self.pic_path)
+
+        points = img_points.astype(int).reshape((-1, 2))
+
+        # Calculate the centroid of the points
+        centroid = numpy.mean(points, axis=0)
+
+        # Sort points based on their angle relative to the centroid
+        def angle_from_centroid(point):
+            return math.atan2(point[1] - centroid[1], point[0] - centroid[0])
+
+        points = sorted(points, key=angle_from_centroid)
+        points = numpy.array(points).reshape((-1, 1, 2))
+
+        # Draw the polygon
+        cv2.polylines(image, [points], isClosed=True, color=(0, 255, 255), thickness=2)
+
         for i in range(len(img_points)):
             cv2.circle(image, (int(img_points[i][0][0]), int(img_points[i][0][1])), 50, (0, 255, 255), -1)
 

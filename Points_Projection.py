@@ -88,10 +88,12 @@ class Points_Projection(object):
         project the points on the picture
         :return: the points on the picture
         '''
+
+        # get the roll, pitch and yaw angle
         roll_angle = math.radians(self.get_XMP_INf(self.pic_path, 'GimbalRollDegree'))
         pitch_angle = math.radians(self.get_XMP_INf(self.pic_path, 'GimbalPitchDegree')+90)
         yaw_angle = math.radians(self.get_XMP_INf(self.pic_path, 'GimbalYawDegree')*(-1))
-        print(roll_angle, pitch_angle, yaw_angle)
+        # calculate the rvec, tvec, and the cloud_points in the camera coordinate
         Roll = numpy.array([
             [1,                         0,                      0],
             [0,                         math.cos(roll_angle),   -math.sin(roll_angle)],
@@ -107,22 +109,20 @@ class Points_Projection(object):
         rvec = cv2.Rodrigues(Yaw.dot(Pitch).dot(Roll))[0]
         tvec = numpy.array([0, 0, 0], dtype=numpy.float32)
         self.cloud_points -= numpy.array(self.getXY(self.pic_path))
-
+        # project the points on the picture
         img_points, jacobian = cv2.projectPoints(self.cloud_points, rvec, tvec, self.camera_matrix, self.dis_coeffs)
+
+        #draw frane select
         image = cv2.imread(self.pic_path)
-
         points = img_points.astype(int).reshape((-1, 2))
-
         # Calculate the centroid of the points
         centroid = numpy.mean(points, axis=0)
-
         # Sort points based on their angle relative to the centroid
         def angle_from_centroid(point):
             return math.atan2(point[1] - centroid[1], point[0] - centroid[0])
 
         points = sorted(points, key=angle_from_centroid)
         points = numpy.array(points).reshape((-1, 1, 2))
-
         # Draw the polygon
         cv2.polylines(image, [points], isClosed=True, color=(0, 255, 255), thickness=2)
 

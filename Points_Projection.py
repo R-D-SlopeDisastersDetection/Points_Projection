@@ -7,19 +7,34 @@ from PIL import Image
 from pyproj import Proj, transform, Transformer
 
 class Points_Projection(object):
-    def __init__(self, cloud_points : list, pic_path : str, camera_martix : list, dis_coeffs : list, show : bool = True,
-                 show_scale_percent : int = 30, output : bool = False, output_path : str = ''):
+    def __init__(self, cloud_points : list, pic_path : str, camera_martix : list, dis_coeffs : list, bool_show : bool = True,
+                 show_scale_percent : int = 30, bool_output : bool = False, output_path : str = ''):
+        """
+        :param cloud_points: the 3D points which want to project
+        :param pic_path:    the path of the picture which the points will be projected on
+        :param camera_martix:   the camera matrix
+        :param dis_coeffs:  the distortion coefficients,like [k1, k2, p1, p2, k3]
+        :param show:   show the result or not
+        :param show_scale_percent:  the scale percent of the show picture, default is 30, if you find the picture is
+         too small or too large, you can set it yourself
+        :param output: output the result picture or not
+        :param output_path:  the path of the output picture
+        """
         self.cloud_points = numpy.array(cloud_points)
         self.pic_path = pic_path
         self.camera_matrix = numpy.array(camera_martix)
         self.dis_coeffs = numpy.array(dis_coeffs)
-        self.bool_output = output
-        self.bool_show = show
+        self.bool_output = bool_output
+        self.bool_show = bool_show
         self.output_path = output_path
         self.show_scale_percent = show_scale_percent
 
     def getXY(self, pic_path: str):
-        # pic_path = 'data/pic_01.JPG'
+        '''
+        get the latitude, longitude and altitude in CGCS2000 / 3-degree Gauss-Kruger CM 111E of the picture
+        :param pic_path: the path of the picture
+        :return: [latitude, longitude, altitude(is negative)] in  CGCS2000 / 3-degree Gauss-Kruger CM 111E
+        '''
         f = open(pic_path, 'rb')
         tags = exifread.process_file(f)
         if "GPS GPSLatitude" in tags:
@@ -45,6 +60,12 @@ class Points_Projection(object):
         return [y, x, -alt]
 
     def get_XMP_INf(self, pic_path: str, inf_key: str):
+        '''
+        get the information in the XMP of the picture
+        :param pic_path: the path of the picture
+        :param inf_key: the key of the information
+        :return: the value of the key in the XMP
+        '''
         with Image.open(pic_path) as im:
             xmp_inf = str(im.info.get('xmp')).split('\\n')
             for i in range(0, len(xmp_inf)):
@@ -63,6 +84,10 @@ class Points_Projection(object):
                         return value
 
     def process(self):
+        '''
+        project the points on the picture
+        :return: the points on the picture
+        '''
         roll_angle = math.radians(self.get_XMP_INf(self.pic_path, 'GimbalRollDegree'))
         pitch_angle = math.radians(self.get_XMP_INf(self.pic_path, 'GimbalPitchDegree')+90)
         yaw_angle = math.radians(self.get_XMP_INf(self.pic_path, 'GimbalYawDegree')*(-1))
@@ -98,3 +123,5 @@ class Points_Projection(object):
 
         if self.bool_output:
             cv2.imwrite(self.output_path, image)
+
+        return img_points
